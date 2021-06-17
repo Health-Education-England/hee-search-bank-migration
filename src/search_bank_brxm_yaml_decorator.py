@@ -127,7 +127,7 @@ def get_decorated_search_bank_object(search_bank, search_bank_node_name, state, 
     # Add SearchBank data
     decorated_search_bank['hee:title'] = f'{unidecode(search_bank["title"])}'
     decorated_search_bank['hee:topics'] = search_bank["topics"]
-    decorated_search_bank['hee:keyTerms'] = ''
+    decorated_search_bank['hee:keyTerms'] = []
     decorated_search_bank['hee:provider'] = f'{search_bank["provider"]}'
     decorated_search_bank['hee:completedDate'] = datetime.strptime(search_bank["completed_date"], '%d/%m/%Y')
 
