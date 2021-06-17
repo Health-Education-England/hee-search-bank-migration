@@ -10,5 +10,6 @@ services:
       INPUT_SEARCH_BANK_JSON_FILE_PATH: /input/<search_bank_json_file_name>
       # e.g. INPUT_SEARCH_BANK_JSON_FILE_PATH: /input/17-Searches-2021-02-12.json
       # Must end with trailing slash
+      OUTPUT_SEARCH_BANK_CHUNK_SIZE: 30
       OUTPUT_DIRECTORY: /output/
       DEBUG: 'False'

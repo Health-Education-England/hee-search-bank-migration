@@ -61,6 +61,7 @@ def dump_yaml_and_archive(object_plural_name, decorated_object, output_yaml_file
 def main():
     # ENVIRONMENT VARIABLES
     INPUT_SEARCH_BANK_JSON_FILE_PATH = os.getenv('INPUT_SEARCH_BANK_JSON_FILE_PATH')
+    OUTPUT_SEARCH_BANK_CHUNK_SIZE = int(os.getenv('OUTPUT_SEARCH_BANK_CHUNK_SIZE'))
     OUTPUT_DIRECTORY = os.getenv('OUTPUT_DIRECTORY')
     DEBUG = eval(os.getenv('DEBUG'))
 
@@ -103,25 +104,31 @@ def main():
     # Decorate migrated search banks for brXM import
     # NOTE that it also downloads the associated search bank strategy and search documents
     # along with text extracted from PDF files as a binary resource
-    decorated_search_banks = search_bank_decorator.get_decorated_migrated_search_banks_folder(search_banks, OUTPUT_DIRECTORY)
-    if DEBUG:
-        print(f'Decorated Search Banks = {decorated_search_banks}\n')
+    chunked_search_banks = [search_banks[i:i + OUTPUT_SEARCH_BANK_CHUNK_SIZE] for i in range(0, len(search_banks), OUTPUT_SEARCH_BANK_CHUNK_SIZE)]
 
-    # Dump decorated migrated search banks as yaml file
-    output_search_banks_file_path = f'{OUTPUT_DIRECTORY}{OUTPUT_BRXM_SEARCH_BANKS_YAML_FILE_NAME_WITHOUT_EXTN}'
-    output_search_banks_yaml_file_path = f'{output_search_banks_file_path}.yaml'
-    output_search_banks_archive_yaml_file_path = f'{output_search_banks_file_path}.zip'
-    output_search_banks_documents_file_path = f'{OUTPUT_DIRECTORY}documents'
-    dump_brxm_yaml_file(decorated_search_banks, output_search_banks_yaml_file_path)
-    print(f'brXM migrated search banks yaml file {output_search_banks_yaml_file_path} has successfully been generated\n')
+    chunk_counter = 0
+    for search_bank_chunk in chunked_search_banks:
+        chunk_counter += 1
+        decorated_search_bank_chunk = search_bank_decorator.get_decorated_migrated_search_bank_chunk_folder(search_bank_chunk, OUTPUT_DIRECTORY, chunk_counter)
 
-    # Archive search banks yaml file and its associated [strategy & search] documents
-    archive_brxm_files(
-        output_search_banks_yaml_file_path,
-        OUTPUT_DIRECTORY,
-        output_search_banks_documents_file_path,
-        output_search_banks_archive_yaml_file_path)
-    print(f'Both brXM migrated search banks yaml file {output_search_banks_yaml_file_path} and its associated [strategy & search] documents (available under {output_search_banks_documents_file_path}) has successfully been archived as {output_search_banks_archive_yaml_file_path}\n')
+        if DEBUG:
+            print(f'Decorated Search Bank Chunk = {decorated_search_bank_chunk}\n')
+
+        # Dump decorated migrated search banks as yaml file
+        output_search_banks_file_path = f'{OUTPUT_DIRECTORY}{OUTPUT_BRXM_SEARCH_BANKS_YAML_FILE_NAME_WITHOUT_EXTN}-{chunk_counter}'
+        output_search_banks_yaml_file_path = f'{output_search_banks_file_path}.yaml'
+        output_search_banks_archive_yaml_file_path = f'{output_search_banks_file_path}.zip'
+        output_search_banks_documents_file_path = f'{OUTPUT_DIRECTORY}documents-{chunk_counter}'
+        dump_brxm_yaml_file(decorated_search_bank_chunk, output_search_banks_yaml_file_path)
+        print(f'brXM migrated search bank chunk yaml file {output_search_banks_yaml_file_path} has successfully been generated\n')
+
+        # Archive search banks yaml file and its associated [strategy & search] documents
+        archive_brxm_files(
+            output_search_banks_yaml_file_path,
+            OUTPUT_DIRECTORY,
+            output_search_banks_documents_file_path,
+            output_search_banks_archive_yaml_file_path)
+        print(f'Both brXM migrated search bank chunk yaml file {output_search_banks_yaml_file_path} and its associated [strategy & search] documents (available under {output_search_banks_documents_file_path}) has successfully been archived as {output_search_banks_archive_yaml_file_path}\n')
 
     if unprocessed_search_banks:
         output_unprocessed_search_banks_file_path = f'{OUTPUT_DIRECTORY}{OUTPUT_UNPROCESSED_SEARCH_BANKS_JSON_FILE_PATH}'

@@ -61,15 +61,15 @@ def create_default_hippo_resource(output_file_path):
 
     os.system(f'touch {output_file_path}')
 
-def get_document_node(search_bank_node_name, document_url, output_directory):
+def get_document_node(search_bank_node_name, document_url, output_directory, chunk_counter):
     if document_url:
         filename = get_filename(document_url)
-        relative_output_file_path = f'documents/{search_bank_node_name}/{filename}'
+        relative_output_file_path = f'documents-{chunk_counter}/{search_bank_node_name}/{filename}'
         download_document(document_url, f'{output_directory}{relative_output_file_path}')
         mime_type = get_mime_type(filename)
     else:
         filename = 'hippo:resource'
-        relative_output_file_path = f'documents/{search_bank_node_name}/hippo-resource'
+        relative_output_file_path = f'documents-{chunk_counter}/{search_bank_node_name}/hippo-resource'
         create_default_hippo_resource(f'{output_directory}{relative_output_file_path}')
         mime_type = 'application/vnd.hippo.blank'
 
@@ -87,7 +87,7 @@ def get_document_node(search_bank_node_name, document_url, output_directory):
 
     if mime_type == 'application/pdf':
         splitted_file_name = os.path.splitext(filename)
-        relative_output_text_file_path = f'documents/{search_bank_node_name}/{splitted_file_name[0]}_text{splitted_file_name[1]}'
+        relative_output_text_file_path = f'documents-{chunk_counter}/{search_bank_node_name}/{splitted_file_name[0]}_text{splitted_file_name[1]}'
 
         generate_text_version_of_pdf(f'{output_directory}{relative_output_file_path}', f'{output_directory}{relative_output_text_file_path}')
 
@@ -98,17 +98,17 @@ def get_document_node(search_bank_node_name, document_url, output_directory):
 
     return document_node
 
-def get_decorated_migrated_search_bank_folder_object():
+def get_decorated_migrated_search_bank_chunk_folder_object(chunk_counter):
     return {
-        "jcr:primaryType": "hippostd:folder",
-        "jcr:mixinTypes": ["hippo:named", "hippotranslation:translated", "mix:versionable"],
-        "hippo:name": "Migrated Search Banks",
-        "hippostd:foldertype": ["new-searchBank-folder", "new-searchBank-document"],
-        "hippotranslation:id": str(uuid.uuid4()),
-        "hippotranslation:locale": "en"
+        'jcr:primaryType': 'hippostd:folder',
+        'jcr:mixinTypes': ['hippo:named', 'hippotranslation:translated', 'mix:versionable'],
+        'hippo:name': f'Chunk {chunk_counter}',
+        'hippostd:foldertype': ['new-searchBank-folder', 'new-searchBank-document'],
+        'hippotranslation:id': str(uuid.uuid4()),
+        'hippotranslation:locale': 'en'
     }
 
-def get_decorated_search_bank_object(search_bank, search_bank_node_name, state, availability, translation_uuid, output_directory):
+def get_decorated_search_bank_object(search_bank, search_bank_node_name, state, availability, translation_uuid, output_directory, chunk_counter):
     decorated_search_bank = {}
 
     # Add meta data
@@ -131,23 +131,23 @@ def get_decorated_search_bank_object(search_bank, search_bank_node_name, state, 
     decorated_search_bank['hee:provider'] = f'{search_bank["provider"]}'
     decorated_search_bank['hee:completedDate'] = datetime.strptime(search_bank["completed_date"], '%d/%m/%Y')
 
-    decorated_search_bank['/hee:strategyDocument'] = get_document_node(search_bank_node_name, search_bank['strategy_doc_url'], output_directory)
-    decorated_search_bank['/hee:searchDocument'] = get_document_node(search_bank_node_name, search_bank['search_doc_url'], output_directory)
+    decorated_search_bank['/hee:strategyDocument'] = get_document_node(search_bank_node_name, search_bank['strategy_doc_url'], output_directory, chunk_counter)
+    decorated_search_bank['/hee:searchDocument'] = get_document_node(search_bank_node_name, search_bank['search_doc_url'], output_directory, chunk_counter)
 
     return decorated_search_bank
 
-def get_decorated_migrated_search_banks_folder(search_banks, output_directory):
+def get_decorated_migrated_search_bank_chunk_folder(search_bank_chunk, output_directory, chunk_counter):
     # Initialising mimetypes and tika modules
     mimetypes.init()
     tika.initVM()
 
-    decorated_migrated_search_bank_folder = {}
+    decorated_migrated_search_bank_chunk_folder = {}
     search_bank_node_names = []
 
     # Build migrated-search-bank folder node
-    decorated_migrated_search_bank_folder['/migrated-search-bank'] = get_decorated_migrated_search_bank_folder_object()
+    decorated_migrated_search_bank_chunk_folder[f'/chunk-{chunk_counter}'] = get_decorated_migrated_search_bank_chunk_folder_object(chunk_counter)
 
-    for search_bank in search_banks:
+    for search_bank in search_bank_chunk:
         print(f'Decorating Search Bank with title = {search_bank["title"]}')
 
         search_bank_node_name = get_brxm_node_name(search_bank['title'], 50)
@@ -163,14 +163,14 @@ def get_decorated_migrated_search_banks_folder(search_banks, output_directory):
         search_bank_node_names.append(search_bank_node_name)
 
         # Build hee:searchBank handle node
-        decorated_migrated_search_bank_folder['/migrated-search-bank']['/' + search_bank_node_name] = get_decorated_document_handle_object(search_bank['title'])
+        decorated_migrated_search_bank_chunk_folder[f'/chunk-{chunk_counter}']['/' + search_bank_node_name] = get_decorated_document_handle_object(search_bank['title'])
 
         translation_uuid = str(uuid.uuid4())
 
         # Build hee:searchBank node for draft version
-        decorated_migrated_search_bank_folder['/migrated-search-bank']['/' + search_bank_node_name]['/' + search_bank_node_name + '[1]'] = get_decorated_search_bank_object(search_bank, search_bank_node_name, 'draft', [], translation_uuid, output_directory)
+        decorated_migrated_search_bank_chunk_folder[f'/chunk-{chunk_counter}']['/' + search_bank_node_name]['/' + search_bank_node_name + '[1]'] = get_decorated_search_bank_object(search_bank, search_bank_node_name, 'draft', [], translation_uuid, output_directory, chunk_counter)
 
         # Build hee:searchBank node for unpublished version
-        decorated_migrated_search_bank_folder['/migrated-search-bank']['/' + search_bank_node_name]['/' + search_bank_node_name + '[2]'] = get_decorated_search_bank_object(search_bank, search_bank_node_name, 'unpublished', ['preview'], translation_uuid, output_directory)
+        decorated_migrated_search_bank_chunk_folder[f'/chunk-{chunk_counter}']['/' + search_bank_node_name]['/' + search_bank_node_name + '[2]'] = get_decorated_search_bank_object(search_bank, search_bank_node_name, 'unpublished', ['preview'], translation_uuid, output_directory, chunk_counter)
 
-    return decorated_migrated_search_bank_folder
+    return decorated_migrated_search_bank_chunk_folder
